@@ -1,0 +1,162 @@
+// Database Connection
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// Generate Prisma Client
+generator client {
+  provider = "prisma-client-js"
+}
+
+// User Table (Players, Referees, Organizers)
+model User {
+  id            String   @id @default(uuid())  
+  email         String   @unique
+  fullName      String?
+  password      String?  
+  authProvider  AuthProvider @default(EMAIL_PASSWORD)
+  googleId      String?  @unique  
+  otpSecret     String?  
+  role          Role     @default(PLAYER) 
+  points        Int      @default(0) // ✅ Leaderboard tracking
+  wins          Int      @default(0) // ✅ Win count
+  losses        Int      @default(0) // ✅ Loss count
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  rolePermissions RolePermission[]
+  tournaments    Tournament[] @relation("OrganizerTournaments")
+  fantasyTeams   FantasyTeam[]
+  matchesA       Match[] @relation("playerA")
+  matchesB       Match[] @relation("playerB")
+}
+
+// Authentication Provider Enum
+enum AuthProvider {
+  EMAIL_PASSWORD
+  GOOGLE
+  OTP
+}
+
+// Sessions Table for JWT Authentication
+model Session {
+  id          String   @id @default(uuid())  
+  userId      String   @unique
+  token       String   @unique  
+  expiresAt   DateTime
+  createdAt   DateTime @default(now())
+
+  user        User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// Role Enum
+enum Role {
+  PLAYER
+  REFEREE
+  ORGANIZER
+  ADMIN
+}
+
+// Permissions Table
+model Permission {
+  id           String   @id @default(uuid())  
+  name         String   @unique
+  description  String?
+  createdAt    DateTime @default(now())
+
+  rolePermissions RolePermission[]
+}
+
+// Role-Permission Relationship (Many-to-Many)
+model RolePermission {
+  id          String   @id @default(uuid())  
+  role        Role
+  permission  Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  permissionId String
+}
+
+// Tournament Table
+model Tournament {
+  id            String   @id @default(uuid())  
+  name          String
+  organizerId   String
+  maxPlayers    Int
+  format        TournamentFormat @default(SINGLE_ELIMINATION)
+  entryFee      Float
+  location      String?
+  startDate     DateTime
+  endDate       DateTime?
+  createdAt     DateTime @default(now())
+
+  organizer     User   @relation(fields: [organizerId], references: [id], onDelete: Cascade)
+  matches       Match[]
+  fantasyLeague FantasyLeague?
+  
+  @@index([organizerId])  
+}
+
+// Tournament Format Enum
+enum TournamentFormat {
+  SINGLE_ELIMINATION
+  DOUBLE_ELIMINATION
+  ROUND_ROBIN
+}
+
+// Match Table
+model Match {
+  id           String   @id @default(uuid())  
+  tournamentId String
+  playerAId    String
+  playerBId    String
+  refereeId    String?
+  winnerId     String?
+  scoreA       Int      @default(0)
+  scoreB       Int      @default(0)
+  status       MatchStatus @default(SCHEDULED)
+  createdAt    DateTime @default(now())
+
+  tournament   Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  playerA      User       @relation(fields: [playerAId], references: [id], onDelete: Cascade)
+  playerB      User       @relation(fields: [playerBId], references: [id], onDelete: Cascade)
+  referee      User?      @relation(fields: [refereeId], references: [id])
+
+  @@index([tournamentId])  
+}
+
+// Match Status Enum
+enum MatchStatus {
+  SCHEDULED
+  IN_PROGRESS
+  COMPLETED
+}
+
+// Fantasy League Table
+model FantasyLeague {
+  id            String   @id @default(uuid())  
+  name          String
+  tournamentId  String
+  entryFee      Float
+  prizePool     Float
+  createdAt     DateTime @default(now())
+
+  tournament    Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  fantasyTeams  FantasyTeam[]
+
+  @@index([tournamentId]) 
+}
+
+// Fantasy Team Table
+model FantasyTeam {
+  id           String   @id @default(uuid())  
+  userId       String
+  fantasyLeagueId String
+  players      Json 
+  points       Int      @default(0)
+  createdAt    DateTime @default(now())
+
+  user         User   @relation(fields: [userId], references: [id])
+  fantasyLeague FantasyLeague @relation(fields: [fantasyLeagueId], references: [id], onDelete: Cascade)
+
+  @@index([userId])  
+}

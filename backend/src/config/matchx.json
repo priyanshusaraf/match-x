@@ -1,0 +1,11 @@
+{
+  "web": {
+    "client_id": "636572060528-nke19hr0e5rki7s18ni6i9ttckfeicj3.apps.googleusercontent.com",
+    "project_id": "matchup-442816",
+    "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+    "token_uri": "https://oauth2.googleapis.com/token",
+    "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+    "client_secret": "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",
+    "redirect_uris": ["http://localhost:5000/auth/google/callback"]
+  }
+}
